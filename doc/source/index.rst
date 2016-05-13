@@ -1,8 +1,8 @@
-================
- oslo.delimiter
-================
+===========
+ Delimiter
+===========
 
-CrOpenStack Cross Project Quota Enforcement and Management Library
+OpenStack Cross Project Quota Enforcement and Management Library
 
 Contents
 ========
