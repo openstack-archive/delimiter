@@ -12,10 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from delimiter import test
+from oslotest import base
 
 
-class TestDelimiter(test.TestCase):
-
-    def test_something(self):
-        pass
+class TestCase(base.BaseTestCase):
+    """Base test case + additions for all delimiter tests."""
