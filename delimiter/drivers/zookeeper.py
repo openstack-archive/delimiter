@@ -37,12 +37,12 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
         self.client = None
 
     def start(self):
-        self.client = client.KazooClient(hosts=self.url.netloc)
+        self.client = client.KazooClient(hosts=self.uri.netloc)
         self.client.start()
-        self.client.ensure_path(self.url.path)
+        self.client.ensure_path(self.uri.path)
 
     def read_limits(self, for_who):
-        who_path = paths.join(self.url.path, for_who)
+        who_path = paths.join(self.uri.path, for_who)
         try:
             child_nodes = self.client.get_children(who_path)
         except exceptions.NoNodeError:
@@ -60,7 +60,7 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
             return limits
 
     def create_or_update_limits(self, for_who, resources, limits):
-        who_path = paths.join(self.url.path, for_who)
+        who_path = paths.join(self.uri.path, for_who)
         self.client.ensure_path(who_path)
         for resource, limit in zip(resources, limits):
             resource_path = paths.join(who_path, resource)
@@ -78,7 +78,7 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                                 version=znode.version)
 
     def consume_many(self, for_who, resources, amounts):
-        who_path = paths.join(self.url.path, for_who)
+        who_path = paths.join(self.uri.path, for_who)
         values_to_save = []
         for resource, amount in zip(resources, amounts):
             resource_path = paths.join(who_path, resource)
@@ -105,7 +105,7 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                     txn.set_data(path, value, version=version)
 
     def consume(self, for_who, resource, amount):
-        who_path = paths.join(self.url.path, for_who)
+        who_path = paths.join(self.uri.path, for_who)
         resource_path = paths.join(who_path, resource)
         blob, znode = self.client.get(resource_path)
         cur_limit = json.loads(blob)
