@@ -17,7 +17,7 @@ from oslo_utils import netutils
 import stevedore.driver
 
 ENGINE_NAMESPACE = "delimiter.engines"
-DEFAULT_KIND = "mysql"
+DEFAULT_KIND = "sql"
 
 
 def create_engine(uri):
