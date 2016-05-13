@@ -59,23 +59,22 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                     limits.append((resource, json.loads(blob)))
             return limits
 
-    def create_or_update_limits(self, for_who, resources, limits):
+    def create_or_update_limit(self, for_who, resource, limit):
         who_path = paths.join(self.uri.path, for_who)
         self.client.ensure_path(who_path)
-        for resource, limit in zip(resources, limits):
-            resource_path = paths.join(who_path, resource)
-            try:
-                self.client.create(resource_path, json.dumps(limit))
-            except exceptions.NodeExistsError:
-                blob, znode = self.client.get(resource_path)
-                cur_limit = json.loads(blob)
-                cur_limit.update(limit)
-                # Ensure we pass in the version that we read this on so
-                # that if it was changed by some other actor that we can
-                # avoid overwriting that value (and retry, or handle in some
-                # other manner).
-                self.client.set(resource_path, json.dumps(cur_limit),
-                                version=znode.version)
+        resource_path = paths.join(who_path, resource)
+        try:
+            self.client.create(resource_path, json.dumps(limit))
+        except exceptions.NodeExistsError:
+            blob, znode = self.client.get(resource_path)
+            cur_limit = json.loads(blob)
+            cur_limit.update(limit)
+            # Ensure we pass in the version that we read this on so
+            # that if it was changed by some other actor that we can
+            # avoid overwriting that value (and retry, or handle in some
+            # other manner).
+            self.client.set(resource_path, json.dumps(cur_limit),
+                            version=znode.version)
 
     def consume_many(self, for_who, resources, amounts):
         who_path = paths.join(self.uri.path, for_who)

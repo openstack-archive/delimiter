@@ -36,10 +36,10 @@ class QuotaEngine(object):
         """Reads the limits of some entity."""
 
     @abc.abstractmethod
-    def create_or_update_limits(self, for_who, resources, limits):
-        """Creates or updates a set of resource limits for some entity.
+    def create_or_update_limit(self, for_who, resource, limit):
+        """Updates or creates a resource limit for some entity.
 
-        Must operate transactionally; either all created/updated or none.
+        Must operate transactionally; either created/updated or not.
         """
 
     @abc.abstractmethod
