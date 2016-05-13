@@ -23,7 +23,7 @@ class QuotaEngine(object):
     """The abstraction that all quota engines derive from."""
 
     def __init__(self, uri):
-        self._uri = uri
+        self.uri = uri
 
     def start(self):
         """Performs any engine startup (connection setup, validation...)"""
