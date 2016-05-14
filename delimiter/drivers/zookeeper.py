@@ -82,7 +82,10 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                                limit, kind='upper_bound'):
         processor = self.processors.get(kind)
         if not processor:
-            raise ValueError("Unsupported kind '%s'" % kind)
+            raise exceptions.UnsupportedKind(
+                "Unsupported kind '%s' requested"
+                " for resource '%s' owned by '%s'"
+                % (kind, resource, for_who))
         who_path = paths.join(self.uri.path, for_who)
         self.client.ensure_path(who_path)
         resource_path = paths.join(who_path, resource)

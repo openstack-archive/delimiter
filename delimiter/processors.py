@@ -21,6 +21,7 @@ from delimiter import exceptions
 BoundedResource = collections.namedtuple('BoundedResource',
                                          ['consumed', 'bound'])
 
+
 class UpperBoundProcessor(object):
     """Processes a limit given some upper bound."""
 
