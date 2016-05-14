@@ -115,7 +115,10 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                 "Unsupported kind '%s' encountered"
                 " for resource '%s' owned by '%s'"
                 % (kind, resource, for_who))
-        return processor.process(stored['details'], amount)
+        return {
+            'kind': kind,
+            'details': processor.process(stored['details'], amount),
+        }
 
     def consume_many(self, for_who, resources, amounts):
         who_path = paths.join(self.uri.path, for_who)
@@ -139,8 +142,8 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
         who_path = paths.join(self.uri.path, for_who)
         resource_path = paths.join(who_path, resource)
         blob, znode = self.client.get(resource_path)
-        new_stored = self._try_consume(for_who, resource,
-                                       json.loads(blob), amount)
+        new_stored = self._try_consume(
+            for_who, resource, json.loads(blob), amount)
         # Ensure we pass in the version that we read this on so
         # that if it was changed by some other actor that we can
         # avoid overwriting that value (and retry, or handle in some
