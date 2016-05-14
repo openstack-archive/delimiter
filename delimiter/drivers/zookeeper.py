@@ -16,10 +16,11 @@
 import json
 
 from kazoo import client
-from kazoo import exceptions
+from kazoo import exceptions as kazoo_exceptions
 from kazoo.protocol import paths
 
 from delimiter import engine
+from delimiter import exceptions
 from delimiter import processors
 
 
@@ -56,7 +57,7 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
         who_path = paths.join(self.uri.path, for_who)
         try:
             child_nodes = self.client.get_children(who_path)
-        except exceptions.NoNodeError:
+        except kazoo_exceptions.NoNodeError:
             return []
         else:
             limits = []
@@ -64,14 +65,15 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                 try:
                     blob, _znode = self.client.get(paths.join(who_path,
                                                               resource))
-                except exceptions.NoNodeError:
+                except kazoo_exceptions.NoNodeError:
                     pass
                 else:
                     stored = json.loads(blob)
                     kind = stored['kind']
                     processor = self.processors.get(kind)
                     if not processor:
-                        raise ValueError("Read unsupported kind '%s'" % kind)
+                        raise exceptions.UnsupportedKind(
+                            "Read unsupported kind '%s'" % kind)
                     limits.append((resource,
                                    processor.decode(stored['details'])))
             return limits
@@ -89,12 +91,13 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                 'kind': kind,
                 'details': processor.create(limit),
             }))
-        except exceptions.NodeExistsError:
+        except kazoo_exceptions.NodeExistsError:
             blob, znode = self.client.get(resource_path)
             stored = json.loads(blob)
             if stored['kind'] != kind:
-                raise ValueError("Can only update limits of the same"
-                                 " kind, %s != %s" % (kind, stored['kind']))
+                raise exceptions.UnsupportedKind(
+                    "Can only update limits of the same"
+                    " kind, %s != %s" % (kind, stored['kind']))
             else:
                 stored['details'] = processor.update(stored['details'], limit)
                 # Ensure we pass in the version that we read this on so
@@ -108,9 +111,10 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
         kind = stored['kind']
         processor = self.processors.get(kind)
         if not processor:
-            raise ValueError("Unsupported kind '%s' encountered"
-                             " for resource '%s' owned by '%s'"
-                             % (kind, resource, for_who))
+            raise exceptions.UnsupportedKind(
+                "Unsupported kind '%s' encountered"
+                " for resource '%s' owned by '%s'"
+                % (kind, resource, for_who))
         return processor.process(stored['details'], amount)
 
     def consume_many(self, for_who, resources, amounts):

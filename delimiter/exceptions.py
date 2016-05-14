@@ -18,5 +18,9 @@ class DelimiterException(Exception):
     """Base class for *most* exceptions emitted from this library."""
 
 
+class UnsupportedKind(DelimiterException):
+    """Exception raised when an unknown resource/limit kind is found."""
+
+
 class OverLimitException(DelimiterException):
     """Exception raised when over some limit."""
