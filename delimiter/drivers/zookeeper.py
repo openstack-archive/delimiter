@@ -118,10 +118,8 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                 "Unsupported kind '%s' encountered"
                 " for resource '%s' owned by '%s'"
                 % (kind, resource, for_who))
-        return {
-            'kind': kind,
-            'details': processor.process(stored['details'], amount),
-        }
+        stored['details'] = processor.process(stored['details'], amount)
+        return stored
 
     def consume_many(self, for_who, resources, amounts):
         who_path = paths.join(self.uri.path, for_who)
