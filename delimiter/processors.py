@@ -14,6 +14,9 @@
 #    under the License.
 
 
+from delimiter import exceptions
+
+
 class UpperBoundProcessor(object):
     """Processes a limit given some upper bound."""
 
@@ -34,8 +37,8 @@ class UpperBoundProcessor(object):
     def process(self, details, amount):
         consumed = details['consumed']
         if consumed + amount > details['bound']:
-            return False
+            raise exceptions.OverLimitException
         else:
             details = details.copy()
             details['consumed'] = consumed + amount
-            return True
+            return details

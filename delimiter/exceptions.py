@@ -16,3 +16,7 @@
 
 class DelimiterException(Exception):
     """Base class for *most* exceptions emitted from this library."""
+
+
+class OverLimitException(DelimiterException):
+    """Exception raised when over some limit."""
