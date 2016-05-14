@@ -13,31 +13,48 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 
 from delimiter import exceptions
 
 
+BoundedResource = collections.namedtuple('BoundedResource',
+                                         ['consumed', 'bound'])
+
 class UpperBoundProcessor(object):
     """Processes a limit given some upper bound."""
 
-    def create(self, bound):
+    @staticmethod
+    def create(limit):
+        """Given some limit, turn it into a *internal* details dict."""
         return {
             'consumed': 0,
-            'bound': bound,
+            'bound': limit,
         }
 
-    def decode(self, details):
-        return details
+    @staticmethod
+    def decode(details):
+        """Turn a internal details dict into a user-viewable one."""
+        return BoundedResource(details['consumed'], details['bound'])
 
-    def update(self, details, bound):
+    @staticmethod
+    def update(details, limit):
+        """Given internal details dict update it with the given limit."""
         details = details.copy()
-        details['bound'] = bound
+        details['bound'] = limit
         return details
 
-    def process(self, details, amount):
+    @staticmethod
+    def process(details, amount):
+        """Given internal details dict process the amount given (or die).
+
+        Updates (and returns) the internal details dict if
+        successful (otherwise raises some exception).
+        """
         consumed = details['consumed']
         if consumed + amount > details['bound']:
-            raise exceptions.OverLimitException
+            raise exceptions.OverLimitException(
+                "Limit of '%s' can not be passed" % details['bound'])
         else:
             details = details.copy()
             details['consumed'] = consumed + amount
