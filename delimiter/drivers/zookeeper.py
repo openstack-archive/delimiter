@@ -32,6 +32,7 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
     and limits on some set of resources.
     """
 
+    #: Limit processors that this engine supports.
     processors = {
         'upper_bound': processors.UpperBoundProcessor(),
     }
