@@ -16,10 +16,12 @@
 import json
 
 from kazoo import client
-from kazoo import exceptions
+from kazoo import exceptions as kazoo_exceptions
 from kazoo.protocol import paths
 
 from delimiter import engine
+from delimiter import exceptions
+from delimiter import processors
 
 
 class ZookeeperQuotaEngine(engine.QuotaEngine):
@@ -30,11 +32,22 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
     and limits on some set of resources.
     """
 
+    #: Limit processors that this engine supports.
+    processors = {
+        'upper_bound': processors.UpperBoundProcessor(),
+    }
+
     def __init__(self, uri):
         super(ZookeeperQuotaEngine, self).__init__(uri)
         if not self.uri.path or self.uri.path == "/":
             raise ValueError("A non-empty url path is required")
         self.client = None
+
+    @property
+    def started(self):
+        if self.client is None:
+            return False
+        return self.client.connected
 
     def start(self):
         self.client = client.KazooClient(hosts=self.uri.netloc)
@@ -45,7 +58,7 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
         who_path = paths.join(self.uri.path, for_who)
         try:
             child_nodes = self.client.get_children(who_path)
-        except exceptions.NoNodeError:
+        except kazoo_exceptions.NoNodeError:
             return []
         else:
             limits = []
@@ -53,28 +66,61 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
                 try:
                     blob, _znode = self.client.get(paths.join(who_path,
                                                               resource))
-                except exceptions.NoNodeError:
+                except kazoo_exceptions.NoNodeError:
                     pass
                 else:
-                    limits.append((resource, json.loads(blob)))
+                    stored = json.loads(blob)
+                    kind = stored['kind']
+                    processor = self.processors.get(kind)
+                    if not processor:
+                        raise exceptions.UnsupportedKind(
+                            "Read unsupported kind '%s'" % kind)
+                    limits.append((resource,
+                                   processor.decode(stored['details'])))
             return limits
 
-    def create_or_update_limit(self, for_who, resource, limit):
+    def create_or_update_limit(self, for_who, resource,
+                               limit, kind='upper_bound'):
+        processor = self.processors.get(kind)
+        if not processor:
+            raise exceptions.UnsupportedKind(
+                "Unsupported kind '%s' requested"
+                " for resource '%s' owned by '%s'"
+                % (kind, resource, for_who))
         who_path = paths.join(self.uri.path, for_who)
         self.client.ensure_path(who_path)
         resource_path = paths.join(who_path, resource)
         try:
-            self.client.create(resource_path, json.dumps(limit))
-        except exceptions.NodeExistsError:
+            self.client.create(resource_path, json.dumps({
+                'kind': kind,
+                'details': processor.create(limit),
+            }))
+        except kazoo_exceptions.NodeExistsError:
             blob, znode = self.client.get(resource_path)
-            cur_limit = json.loads(blob)
-            cur_limit.update(limit)
-            # Ensure we pass in the version that we read this on so
-            # that if it was changed by some other actor that we can
-            # avoid overwriting that value (and retry, or handle in some
-            # other manner).
-            self.client.set(resource_path, json.dumps(cur_limit),
-                            version=znode.version)
+            stored = json.loads(blob)
+            if stored['kind'] != kind:
+                raise exceptions.UnsupportedKind(
+                    "Can only update limits of the same"
+                    " kind, %s != %s" % (kind, stored['kind']))
+            else:
+                stored['details'] = processor.update(stored['details'], limit)
+                # Ensure we pass in the version that we read this on so
+                # that if it was changed by some other actor that we can
+                # avoid overwriting that value (and retry, or handle in some
+                # other manner).
+                self.client.set(resource_path, json.dumps(stored),
+                                version=znode.version)
+
+    def _try_consume(self, for_who, resource, stored, amount):
+        kind = stored['kind']
+        processor = self.processors.get(kind)
+        if not processor:
+            raise exceptions.UnsupportedKind(
+                "Unsupported kind '%s' encountered"
+                " for resource '%s' owned by '%s'"
+                % (kind, resource, for_who))
+        stored['details'] = processor.process(stored['details'], amount)
+        return stored
 
     def consume_many(self, for_who, resources, amounts):
         who_path = paths.join(self.uri.path, for_who)
@@ -82,20 +128,11 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
         for resource, amount in zip(resources, amounts):
             resource_path = paths.join(who_path, resource)
             blob, znode = self.client.get(resource_path)
-            cur_limit = json.loads(blob)
-            try:
-                cur_consumed = cur_limit['consumed']
-            except KeyError:
-                cur_consumed = 0
-            max_resource = cur_limit['max']
-            if cur_consumed + amount > max_resource:
-                raise ValueError("Limit reached, can not"
-                                 " consume %s of %s" % (resource, amount))
-            else:
-                cur_limit['consumed'] = cur_consumed + amount
-                values_to_save.append((resource_path,
-                                       json.dumps(cur_limit),
-                                       znode.version))
+            new_stored = self._try_consume(for_who, resource,
+                                           json.loads(blob), amount)
+            values_to_save.append((resource_path,
+                                   json.dumps(new_stored),
+                                   znode.version))
         # Commit all changes at once, so that we can ensure that all the
         # changes will happen, or none will...
         if values_to_save:
@@ -107,23 +144,14 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
         who_path = paths.join(self.uri.path, for_who)
         resource_path = paths.join(who_path, resource)
         blob, znode = self.client.get(resource_path)
-        cur_limit = json.loads(blob)
-        try:
-            cur_consumed = cur_limit['consumed']
-        except KeyError:
-            cur_consumed = 0
-        max_resource = cur_limit['max']
-        if cur_consumed + amount > max_resource:
-            raise ValueError("Limit reached, can not"
-                             " consume %s of %s" % (resource, amount))
-        else:
-            cur_limit['consumed'] = cur_consumed + amount
-            # Ensure we pass in the version that we read this on so
-            # that if it was changed by some other actor that we can
-            # avoid overwriting that value (and retry, or handle in some
-            # other manner).
-            self.client.set(resource_path, json.dumps(cur_limit),
-                            version=znode.version)
+        new_stored = self._try_consume(
+            for_who, resource, json.loads(blob), amount)
+        # Ensure we pass in the version that we read this on so
+        # that if it was changed by some other actor that we can
+        # avoid overwriting that value (and retry, or handle in some
+        # other manner).
+        self.client.set(resource_path, json.dumps(new_stored),
+                        version=znode.version)
 
     def close(self):
         if self.client is not None:

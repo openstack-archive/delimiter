@@ -25,6 +25,10 @@ class QuotaEngine(object):
     def __init__(self, uri):
         self.uri = uri
 
+    @abc.abstractproperty
+    def started(self):
+        """Whether the current engine has started (or not)."""
+
     def start(self):
         """Performs any engine startup (connection setup, validation...)"""
 
@@ -36,7 +40,8 @@ class QuotaEngine(object):
         """Reads the limits of some entity."""
 
     @abc.abstractmethod
-    def create_or_update_limit(self, for_who, resource, limit):
+    def create_or_update_limit(self, for_who, resource,
+                               limit, kind='upper_bound'):
         """Updates or creates a resource limit for some entity.
 
         Must operate transactionally; either created/updated or not.
