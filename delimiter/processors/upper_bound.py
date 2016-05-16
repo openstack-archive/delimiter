@@ -16,18 +16,17 @@
 import collections
 
 from delimiter import exceptions
-
+from delimiter import processor
 
 BoundedResource = collections.namedtuple('BoundedResource',
                                          ['consumed', 'bound'])
 
 
-class UpperBoundProcessor(object):
+class UpperBoundProcessor(processor.Processor):
     """Processes a limit given some upper bound."""
 
     @staticmethod
     def create(limit):
-        """Given some limit, turn it into a *internal* details dict."""
         return {
             'consumed': 0,
             'bound': limit,
@@ -35,23 +34,16 @@ class UpperBoundProcessor(object):
 
     @staticmethod
     def decode(details):
-        """Turn a internal details dict into a user-viewable one."""
         return BoundedResource(details['consumed'], details['bound'])
 
     @staticmethod
     def update(details, limit):
-        """Given internal details dict update it with the given limit."""
         details = details.copy()
         details['bound'] = limit
         return details
 
     @staticmethod
     def process(details, amount):
-        """Given internal details dict process the amount given (or die).
-
-        Updates (and returns) the internal details dict if
-        successful (otherwise raises some exception).
-        """
         consumed = details['consumed']
         if consumed + amount > details['bound']:
             raise exceptions.OverLimitException(
