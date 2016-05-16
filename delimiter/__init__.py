@@ -32,6 +32,6 @@ def create_engine(uri):
         engine = mgr.driver
     except RuntimeError:
         raise ValueError("Could not find"
-                         "engine '%s' (from uri '%s')" % (kind, uri))
+                         " engine '%s' (from uri '%s')" % (kind, uri))
     else:
         return engine
