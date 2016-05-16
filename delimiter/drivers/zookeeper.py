@@ -21,7 +21,7 @@ from kazoo.protocol import paths
 
 from delimiter import engine
 from delimiter import exceptions
-from delimiter import processors
+from delimiter.processors import upper_bound
 
 
 class ZookeeperQuotaEngine(engine.QuotaEngine):
@@ -34,7 +34,7 @@ class ZookeeperQuotaEngine(engine.QuotaEngine):
 
     #: Limit processors that this engine supports.
     processors = {
-        'upper_bound': processors.UpperBoundProcessor(),
+        'upper_bound': upper_bound.UpperBoundProcessor(),
     }
 
     def __init__(self, uri):
