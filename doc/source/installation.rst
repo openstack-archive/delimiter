@@ -4,4 +4,4 @@
 
 At the command line::
 
-    $ pip install oslo.delimiter
+    $ pip install delimiter

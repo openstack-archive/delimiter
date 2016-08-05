@@ -2,6 +2,6 @@
  Usage
 =======
 
-To use oslo.delimiter in a project::
+To use delimiter in a project::
 
-    import oslo_delimiter
+    import delimiter
