@@ -1,0 +1,9 @@
+Code-Review+2: Duncan Thomas <duncan.thomas@gmail.com>
+Code-Review+2: amrith <amrith@tesora.com>
+Workflow+1: amrith <amrith@tesora.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Tue, 06 Sep 2016 12:33:19 +0000
+Reviewed-on: https://review.openstack.org/361286
+Project: openstack/delimiter
+Branch: refs/heads/master
