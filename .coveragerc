@@ -1,7 +1,0 @@
-[run]
-branch = True
-source = delimiter
-omit = delimiter/tests/*,delimiter/openstack/*
-
-[report]
-ignore_errors = True
